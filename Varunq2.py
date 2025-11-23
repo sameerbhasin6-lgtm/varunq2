@@ -3,155 +3,114 @@ import pandas as pd
 import numpy as np
 from scipy.optimize import differential_evolution
 import plotly.express as px
+import plotly.graph_objects as go
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="PriceAi | Dynamic Pricing Optimizer",
+    page_title="PriceAi | Strategic Pricing",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # --- CUSTOM AESTHETICS & CSS ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
 
     html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Plus Jakarta Sans', sans-serif;
         color: #1e293b;
-    }
-
-    /* Main Background */
-    .stApp {
         background-color: #f8fafc;
     }
 
-    /* Header Styling */
+    /* Header */
     .header-container {
-        padding: 1rem 0rem;
+        padding-bottom: 1rem;
         border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 1.5rem;
+    }
+    .header-title { font-size: 2rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em; }
+    .header-subtitle { font-size: 1rem; color: #64748b; margin-top: 0.2rem; }
+
+    /* KPI Cards */
+    .metric-container {
+        display: flex;
+        gap: 1rem;
         margin-bottom: 2rem;
     }
-    .header-title {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #0f172a;
-        margin: 0;
-    }
-    .header-subtitle {
-        font-size: 1rem;
-        color: #64748b;
-        margin-top: 0.5rem;
-    }
-
-    /* Metric Cards */
     .kpi-card {
         background: white;
-        padding: 1.5rem;
+        padding: 1.25rem;
         border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        flex: 1;
     }
-    .kpi-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: #94a3b8;
-        margin-bottom: 0.5rem;
-    }
-    .kpi-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #1e293b;
-    }
-    .kpi-delta {
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin-top: 0.5rem;
-    }
+    .kpi-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; }
+    .kpi-value { font-size: 1.75rem; font-weight: 700; color: #1e293b; margin: 0.25rem 0; }
+    .kpi-delta { font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
     .text-green { color: #10b981; }
-    .text-blue { color: #3b82f6; }
     .text-indigo { color: #6366f1; }
+    .text-slate { color: #64748b; }
 
-    /* Pricing Cards Layout */
-    .pricing-container {
+    /* Pricing Hero Section */
+    .pricing-wrapper {
         display: flex;
-        gap: 20px;
+        gap: 1.5rem;
+        justify-content: center;
         flex-wrap: wrap;
-        margin-top: 20px;
-        margin-bottom: 40px;
-        justify-content: center; /* Center cards if few */
+        margin: 2rem 0;
     }
     .price-card {
-        flex: 1;
-        min-width: 200px;
-        max-width: 300px;
         background: white;
-        padding: 2rem;
+        padding: 1.5rem;
         border-radius: 16px;
         border: 1px solid #e2e8f0;
         text-align: center;
+        min-width: 180px;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        transition: transform 0.2s;
+        position: relative;
     }
-    .price-card:hover {
-        transform: translateY(-5px);
-    }
-    .price-card.featured {
-        background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
-        border: none;
+    .price-card-title { font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase; }
+    .price-card-value { font-size: 1.5rem; font-weight: 700; color: #0f172a; }
+    
+    /* The Bundle Card - Hero Design */
+    .bundle-card {
+        background: radial-gradient(circle at top right, #4f46e5, #3b82f6);
         color: white;
         transform: scale(1.05);
-        box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.3);
-        z-index: 10;
+        box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.4);
+        border: none;
+        z-index: 2;
     }
-    .price-prod-name {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #64748b;
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-    }
-    .price-card.featured .price-prod-name { color: #e0e7ff; }
-    .price-amount {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #0f172a;
-    }
-    .price-card.featured .price-amount { color: white; }
-
-    /* Insights Section */
-    .insight-box {
-        background: white;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        border-left: 5px solid #cbd5e1;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    .insight-title {
+    .bundle-card .price-card-title { color: rgba(255,255,255,0.8); }
+    .bundle-card .price-card-value { color: white; font-size: 2rem; }
+    .badge {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #f59e0b;
+        color: white;
+        font-size: 0.7rem;
         font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
+        padding: 4px 12px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-    .insight-body {
-        font-size: 0.95rem;
-        color: #475569;
-        line-height: 1.5;
+
+    /* Strategy Box */
+    .strategy-box {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid #e2e8f0;
+        height: 100%;
     }
+    .strategy-header { font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;}
     
-    .divider {
-        height: 1px;
-        background-color: #e2e8f0;
-        margin: 3rem 0;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -167,7 +126,6 @@ def load_data():
         st.stop()
         
 # --- 2. OPTIMIZATION ENGINE ---
-
 def calculate_baseline(df, products):
     total_rev = 0
     for prod in products:
@@ -218,12 +176,10 @@ def get_customer_breakdown(df, products, optimal_prices):
     for i in range(len(df)):
         s_indiv = np.sum(np.maximum(wtp_matrix[i] - indiv_prices, 0))
         s_bundle = bundle_sum_values[i] - bundle_price
-        
         decision = "None"
         revenue = 0
         surplus = 0
         items = "-"
-        
         if s_bundle >= s_indiv and s_bundle >= 0:
             decision = "Bundle"
             revenue = bundle_price
@@ -237,11 +193,9 @@ def get_customer_breakdown(df, products, optimal_prices):
             revenue = np.sum(indiv_prices[bought_indices])
             
         rows.append({
-            "Customer ID": i + 1,
-            "Decision": decision,
+            "Customer ID": i + 1, "Decision": decision, 
             "Items Bought": items.replace("Samsung_", "").replace("_", " "),
-            "Revenue": revenue,
-            "Consumer Surplus": surplus
+            "Revenue": revenue, "Consumer Surplus": surplus
         })
     return pd.DataFrame(rows)
 
@@ -263,28 +217,23 @@ def generate_demand_curve(df, products, optimal_prices):
 # --- MAIN APP ---
 
 def main():
-    with st.sidebar:
-        st.markdown("### Control Center")
-        st.info("System Status: **Online**")
-        st.markdown("**About**: This engine uses Differential Evolution to maximize revenue via Mixed Bundling.")
-        st.write("---")
-        st.caption("v1.2.0 • PriceAi")
-
+    # Title Section
     st.markdown("""
     <div class="header-container">
-        <h1 class="header-title">Dynamic Pricing Optimizer</h1>
-        <div class="header-subtitle">AI-Driven Mixed Bundling Strategy</div>
+        <h1 class="header-title">PriceAi Strategy Engine</h1>
+        <div class="header-subtitle">Optimizing Mixed-Bundling Revenue & Market Segmentation</div>
     </div>
     """, unsafe_allow_html=True)
 
     df = load_data()
     products = df.columns.tolist()
     
-    with st.spinner("🧠 AI Solver running..."):
+    with st.spinner("🔄 Synthesizing Market Data & Optimizing Prices..."):
         baseline_rev = calculate_baseline(df, products)
         opt_prices, max_rev = solve_pricing(df, products)
         customer_df = get_customer_breakdown(df, products, opt_prices)
         
+        # Core Metrics
         total_surplus = customer_df['Consumer Surplus'].sum()
         uplift = ((max_rev - baseline_rev) / baseline_rev) * 100
         bundle_price = opt_prices[-1]
@@ -292,140 +241,136 @@ def main():
         discount = ((sum_indiv_opt - bundle_price) / sum_indiv_opt) * 100
         bundle_adoption = (len(customer_df[customer_df['Decision'] == 'Bundle']) / len(df)) * 100
         
-        # --- SECTION 1: KPIS ---
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-label">Projected Revenue</div>
-                <div class="kpi-value">₹{max_rev:,.0f}</div>
-                <div class="kpi-delta text-green">▲ {uplift:.1f}% vs Baseline</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col2:
-             st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-label">Consumer Surplus</div>
-                <div class="kpi-value">₹{total_surplus:,.0f}</div>
-                <div class="kpi-delta text-blue">Value Retained</div>
-            </div>
-            """, unsafe_allow_html=True)
+        # --- 1. KPI ROW ---
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.markdown(f"""<div class="kpi-card"><div class="kpi-label">Optimized Revenue</div><div class="kpi-value">₹{max_rev:,.0f}</div><div class="kpi-delta text-green">▲ {uplift:.1f}% vs Baseline</div></div>""", unsafe_allow_html=True)
+        with c2:
+            st.markdown(f"""<div class="kpi-card"><div class="kpi-label">Bundle Conversion</div><div class="kpi-value">{bundle_adoption:.0f}%</div><div class="kpi-delta text-indigo">of Total Market</div></div>""", unsafe_allow_html=True)
+        with c3:
+            st.markdown(f"""<div class="kpi-card"><div class="kpi-label">Bundle Discount</div><div class="kpi-value">{discount:.1f}%</div><div class="kpi-delta text-slate">Effective Savings</div></div>""", unsafe_allow_html=True)
+        with c4:
+            st.markdown(f"""<div class="kpi-card"><div class="kpi-label">Consumer Surplus</div><div class="kpi-value">₹{total_surplus:,.0f}</div><div class="kpi-delta text-slate">Value Retained</div></div>""", unsafe_allow_html=True)
 
-        with col3:
-             st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-label">Bundle Adoption</div>
-                <div class="kpi-value">{bundle_adoption:.0f}%</div>
-                <div class="kpi-delta text-indigo">Conversion Rate</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col4:
-             st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-label">Bundle Discount</div>
-                <div class="kpi-value">{discount:.1f}%</div>
-                <div class="kpi-delta" style="color:#64748b;">Effective Savings</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        # --- SECTION 2: PRICING STRATEGY (FIXED) ---
-        st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
-        st.subheader("Recommended Pricing Mix")
+        # --- 2. PRICING HERO SECTION ---
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("### 🏷️ Optimal Pricing Configuration")
         
-        # FIX: We construct the string without indentation to prevent code-block rendering
-        cards_html = ""
-        
-        # Individual Cards
+        # Build HTML for Pricing
+        price_html = ""
+        # Individual
         for i, prod in enumerate(products):
             p_opt = opt_prices[i]
             clean_name = prod.replace("Samsung_", "").replace("_", " ")
-            cards_html += f"""
+            price_html += f"""
             <div class="price-card">
-                <div class="price-prod-name">{clean_name}</div>
-                <div class="price-amount">₹{p_opt:,.0f}</div>
+                <div class="price-card-title">{clean_name}</div>
+                <div class="price-card-value">₹{p_opt:,.0f}</div>
             </div>
             """
-        
-        # Bundle Card
-        cards_html += f"""
-        <div class="price-card featured">
-            <div class="price-prod-name">⚡ All-in Bundle</div>
-            <div class="price-amount">₹{bundle_price:,.0f}</div>
+        # Bundle (Hero)
+        price_html += f"""
+        <div class="price-card bundle-card">
+            <div class="badge">Recommended</div>
+            <div class="price-card-title">All-In Bundle</div>
+            <div class="price-card-value">₹{bundle_price:,.0f}</div>
         </div>
         """
         
-        # Final Container HTML - Removing newlines to ensure clean markdown parsing
-        final_html = f'<div class="pricing-container">{cards_html}</div>'.replace('\n', '')
-        
-        st.markdown(final_html, unsafe_allow_html=True)
+        st.markdown(f'<div class="pricing-wrapper">{price_html}</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-        # --- SECTION 3: INSIGHTS ---
-        c_left, c_right = st.columns([1, 2], gap="large")
+        # --- 3. TABBED ANALYSIS ---
+        st.markdown("<br>", unsafe_allow_html=True)
+        tab1, tab2, tab3 = st.tabs(["📢 Marketing Strategy", "📊 Customer Segments", "📈 Demand Simulation"])
         
-        with c_left:
-            st.subheader("Strategic Insights")
+        # TAB 1: MARKETING INSIGHTS
+        with tab1:
+            m_col1, m_col2 = st.columns([1.5, 1])
             
-            if discount > 15:
-                strategy_title = "Volume Maximization"
-                strategy_desc = "Deep discounting allows for higher volume penetration, offsetting lower margins."
-                color_border = "#10b981"
-            else:
-                strategy_title = "Premium Extraction"
-                strategy_desc = "High willingness-to-pay suggests keeping prices high to maximize margin per unit."
-                color_border = "#6366f1"
+            with m_col1:
+                st.markdown("#### 🧠 Strategic Rationale")
+                
+                # Dynamic Logic for Text
+                if discount > 15:
+                    anchor_text = "The high individual prices serve as **strong anchors**, making the bundle discount feel massive. This 'Decoy Effect' pushes indecisive buyers toward the full package."
+                    segment_text = "Your pricing effectively captures value hunters. The deep discount suggests a volume-play strategy."
+                else:
+                    anchor_text = "Individual prices are set close to the bundle price. This signals 'Premium Quality' across the board, extracting maximum value from loyalists while nudging high-WTP users to the bundle."
+                    segment_text = "The strategy focuses on **Premium Extraction**. You are willing to sacrifice some volume to maintain high margins per unit."
 
-            st.markdown(f"""
-            <div class="insight-box" style="border-left-color: {color_border}">
-                <div class="insight-title">🎯 {strategy_title}</div>
-                <div class="insight-body">{strategy_desc}</div>
-            </div>
-            <div class="insight-box" style="border-left-color: #f59e0b">
-                <div class="insight-title">📢 Marketing Angle</div>
-                <div class="insight-body">
-                    Highlight the <b>₹{(sum_indiv_opt - bundle_price):,.0f}</b> savings prominently.
+                st.markdown(f"""
+                <div class="strategy-box" style="background: white;">
+                    <div style="margin-bottom: 15px;">
+                        <strong>1. The Decoy Effect & Anchoring</strong><br>
+                        <span style="color:#475569; font-size:0.95rem;">{anchor_text}</span>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <strong>2. Market Segmentation</strong><br>
+                        <span style="color:#475569; font-size:0.95rem;">{segment_text}</span>
+                    </div>
+                    <div>
+                        <strong>3. Cross-Sell Opportunity</strong><br>
+                        <span style="color:#475569; font-size:0.95rem;">
+                        Marketing should highlight the <b>₹{(sum_indiv_opt - bundle_price):,.0f}</b> savings. 
+                        This calculates to an average item price of <b>₹{(bundle_price/len(products)):,.0f}</b> in the bundle.
+                        </span>
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-        with c_right:
-            st.subheader("Consumer Choice Simulation")
+            with m_col2:
+                # Revenue Split Chart
+                rev_bundle = customer_df[customer_df['Decision'] == 'Bundle']['Revenue'].sum()
+                rev_indiv = customer_df[customer_df['Decision'] == 'Individual']['Revenue'].sum()
+                
+                fig_donut = px.pie(
+                    names=['Bundle Revenue', 'Individual Sales'],
+                    values=[rev_bundle, rev_indiv],
+                    hole=0.6,
+                    color_discrete_sequence=['#4f46e5', '#cbd5e1'],
+                    title="Revenue Composition"
+                )
+                fig_donut.update_layout(showlegend=True, height=250, margin=dict(t=30, b=0, l=0, r=0))
+                st.plotly_chart(fig_donut, use_container_width=True)
+
+        # TAB 2: DATA TABLE
+        with tab2:
+            st.markdown("#### Detailed Purchase Decisions")
             st.dataframe(
                 customer_df,
                 column_config={
                     "Customer ID": st.column_config.NumberColumn(format="#%d"),
                     "Revenue": st.column_config.NumberColumn(format="₹%d"),
                     "Consumer Surplus": st.column_config.ProgressColumn(format="₹%d", max_value=int(customer_df['Consumer Surplus'].max())),
-                    "Decision": st.column_config.TextColumn(),
-                    "Items Bought": st.column_config.TextColumn(),
+                    "Decision": st.column_config.Column(width="small"),
+                    "Items Bought": st.column_config.Column(width="medium"),
                 },
                 use_container_width=True,
-                height=400,
+                height=500,
                 hide_index=True
             )
 
-        # --- SECTION 4: CHART ---
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-        st.subheader("Bundle Demand Sensitivity")
-        
-        demand_data = generate_demand_curve(df, products, opt_prices)
-        
-        fig = px.area(demand_data, x="Price", y="Demand", labels={"Price": "Bundle Price (₹)", "Demand": "Buyers"})
-        fig.add_vline(x=bundle_price, line_dash="dash", line_color="#10b981", annotation_text="Optimal Price")
-        fig.update_layout(
-            height=450,
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Inter, sans-serif", color="#64748b"),
-            hovermode="x unified"
-        )
-        fig.update_traces(line_color='#6366f1', fillcolor='rgba(99, 102, 241, 0.1)')
-        
-        st.plotly_chart(fig, use_container_width=True)
+        # TAB 3: DEMAND CHART
+        with tab3:
+            st.markdown("#### Bundle Price Sensitivity")
+            st.caption("How does demand change if we raise or lower the Bundle Price (keeping individual prices constant)?")
+            
+            demand_data = generate_demand_curve(df, products, opt_prices)
+            
+            fig = px.area(demand_data, x="Price", y="Demand")
+            fig.add_vline(x=bundle_price, line_dash="dash", line_color="#10b981", annotation_text="Optimal Price")
+            
+            fig.update_layout(
+                height=400,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(family="Plus Jakarta Sans, sans-serif", color="#64748b"),
+                hovermode="x unified",
+                xaxis=dict(title="Bundle Price (₹)", showgrid=False),
+                yaxis=dict(title="Number of Buyers", showgrid=True, gridcolor='#e2e8f0')
+            )
+            fig.update_traces(line_color='#6366f1', fillcolor='rgba(99, 102, 241, 0.1)')
+            st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
     main()
