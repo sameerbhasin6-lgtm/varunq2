@@ -109,7 +109,6 @@ st.markdown("""
         border: 1px solid #e2e8f0;
         height: 100%;
     }
-    .strategy-header { font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;}
     
 </style>
 """, unsafe_allow_html=True)
@@ -217,7 +216,6 @@ def generate_demand_curve(df, products, optimal_prices):
 # --- MAIN APP ---
 
 def main():
-    # Title Section
     st.markdown("""
     <div class="header-container">
         <h1 class="header-title">PriceAi Strategy Engine</h1>
@@ -242,41 +240,35 @@ def main():
         bundle_adoption = (len(customer_df[customer_df['Decision'] == 'Bundle']) / len(df)) * 100
         
         # --- 1. KPI ROW ---
+        # Using single line HTML strings to prevent indentation errors
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            st.markdown(f"""<div class="kpi-card"><div class="kpi-label">Optimized Revenue</div><div class="kpi-value">₹{max_rev:,.0f}</div><div class="kpi-delta text-green">▲ {uplift:.1f}% vs Baseline</div></div>""", unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-label">Optimized Revenue</div><div class="kpi-value">₹{max_rev:,.0f}</div><div class="kpi-delta text-green">▲ {uplift:.1f}% vs Baseline</div></div>', unsafe_allow_html=True)
         with c2:
-            st.markdown(f"""<div class="kpi-card"><div class="kpi-label">Bundle Conversion</div><div class="kpi-value">{bundle_adoption:.0f}%</div><div class="kpi-delta text-indigo">of Total Market</div></div>""", unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-label">Bundle Conversion</div><div class="kpi-value">{bundle_adoption:.0f}%</div><div class="kpi-delta text-indigo">of Total Market</div></div>', unsafe_allow_html=True)
         with c3:
-            st.markdown(f"""<div class="kpi-card"><div class="kpi-label">Bundle Discount</div><div class="kpi-value">{discount:.1f}%</div><div class="kpi-delta text-slate">Effective Savings</div></div>""", unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-label">Bundle Discount</div><div class="kpi-value">{discount:.1f}%</div><div class="kpi-delta text-slate">Effective Savings</div></div>', unsafe_allow_html=True)
         with c4:
-            st.markdown(f"""<div class="kpi-card"><div class="kpi-label">Consumer Surplus</div><div class="kpi-value">₹{total_surplus:,.0f}</div><div class="kpi-delta text-slate">Value Retained</div></div>""", unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-label">Consumer Surplus</div><div class="kpi-value">₹{total_surplus:,.0f}</div><div class="kpi-delta text-slate">Value Retained</div></div>', unsafe_allow_html=True)
 
-        # --- 2. PRICING HERO SECTION ---
+        # --- 2. PRICING HERO SECTION (FIXED INDENTATION) ---
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 🏷️ Optimal Pricing Configuration")
         
-        # Build HTML for Pricing
+        # We build the HTML in a single line to guarantee no Markdown code-block triggers
         price_html = ""
-        # Individual
+        
+        # Individual Cards
         for i, prod in enumerate(products):
             p_opt = opt_prices[i]
             clean_name = prod.replace("Samsung_", "").replace("_", " ")
-            price_html += f"""
-            <div class="price-card">
-                <div class="price-card-title">{clean_name}</div>
-                <div class="price-card-value">₹{p_opt:,.0f}</div>
-            </div>
-            """
-        # Bundle (Hero)
-        price_html += f"""
-        <div class="price-card bundle-card">
-            <div class="badge">Recommended</div>
-            <div class="price-card-title">All-In Bundle</div>
-            <div class="price-card-value">₹{bundle_price:,.0f}</div>
-        </div>
-        """
+            # IMPORTANT: No indentation inside the f-string
+            price_html += f'<div class="price-card"><div class="price-card-title">{clean_name}</div><div class="price-card-value">₹{p_opt:,.0f}</div></div>'
         
+        # Bundle Card (Hero)
+        price_html += f'<div class="price-card bundle-card"><div class="badge">Recommended</div><div class="price-card-title">All-In Bundle</div><div class="price-card-value">₹{bundle_price:,.0f}</div></div>'
+        
+        # Final render
         st.markdown(f'<div class="pricing-wrapper">{price_html}</div>', unsafe_allow_html=True)
 
         # --- 3. TABBED ANALYSIS ---
@@ -290,7 +282,6 @@ def main():
             with m_col1:
                 st.markdown("#### 🧠 Strategic Rationale")
                 
-                # Dynamic Logic for Text
                 if discount > 15:
                     anchor_text = "The high individual prices serve as **strong anchors**, making the bundle discount feel massive. This 'Decoy Effect' pushes indecisive buyers toward the full package."
                     segment_text = "Your pricing effectively captures value hunters. The deep discount suggests a volume-play strategy."
@@ -298,6 +289,7 @@ def main():
                     anchor_text = "Individual prices are set close to the bundle price. This signals 'Premium Quality' across the board, extracting maximum value from loyalists while nudging high-WTP users to the bundle."
                     segment_text = "The strategy focuses on **Premium Extraction**. You are willing to sacrifice some volume to maintain high margins per unit."
 
+                # HTML Block for Strategy
                 st.markdown(f"""
                 <div class="strategy-box" style="background: white;">
                     <div style="margin-bottom: 15px;">
@@ -319,7 +311,6 @@ def main():
                 """, unsafe_allow_html=True)
 
             with m_col2:
-                # Revenue Split Chart
                 rev_bundle = customer_df[customer_df['Decision'] == 'Bundle']['Revenue'].sum()
                 rev_indiv = customer_df[customer_df['Decision'] == 'Individual']['Revenue'].sum()
                 
